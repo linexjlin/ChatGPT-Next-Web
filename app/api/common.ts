@@ -10,7 +10,7 @@ const BASE_URL = process.env.BASE_URL ?? OPENAI_URL;
 
 //key = 'xwxxxxx' or key = 'sk-xxxx' 进入openai
 //key 随意 用chatglm
-function getValues(k: string, p: string): [string, number] {
+function getValues(k: string, p: string): [string, string, string] {
   let provider = "openai";
   let url = "";
   let key = "" + k;
@@ -41,7 +41,7 @@ function getValues(k: string, p: string): [string, number] {
 
 export async function requestOpenai(req: NextRequest) {
   const [url, key, path] = getValues(
-    req.headers.get("Authorization"),
+    "" + req.headers.get("Authorization"),
     `${req.nextUrl.pathname}${req.nextUrl.search}`,
   );
   console.log("[Test]", url, key, path);
