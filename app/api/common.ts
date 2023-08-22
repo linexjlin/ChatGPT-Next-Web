@@ -56,6 +56,10 @@ export async function requestOpenai(req: NextRequest) {
     baseUrl = `${PROTOCOL}://${baseUrl}`;
   }
 
+  if (baseUrl.endsWith('/')) {
+    baseUrl = baseUrl.slice(0, -1);
+  }
+
   console.log("[Proxy] ", openaiPath);
   console.log("[Base Url]", baseUrl);
 
@@ -79,6 +83,8 @@ export async function requestOpenai(req: NextRequest) {
     },
     method: req.method,
     body: req.body,
+    // to fix #2485: https://stackoverflow.com/questions/55920957/cloudflare-worker-typeerror-one-time-use-body
+    redirect: "manual",
     // @ts-ignore
     duplex: "half",
     signal: controller.signal,
