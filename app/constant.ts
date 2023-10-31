@@ -7,8 +7,8 @@ export const RELEASE_URL = `${REPO_URL}/releases`;
 export const FETCH_COMMIT_URL = `https://api.github.com/repos/${OWNER}/${REPO}/commits?per_page=1`;
 export const FETCH_TAG_URL = `https://api.github.com/repos/${OWNER}/${REPO}/tags?per_page=1`;
 export const RUNTIME_CONFIG_DOM = "danger-runtime-config";
-export const DEFAULT_CORS_HOST = "https://ab.nextweb.fun";
-export const DEFAULT_API_HOST = `${DEFAULT_CORS_HOST}/api/proxy`;
+export const DEFAULT_CORS_HOST = "https://one.chinatcc.com";
+export const DEFAULT_API_HOST = `${DEFAULT_CORS_HOST}`;
 
 export enum Path {
   Home = "/",
