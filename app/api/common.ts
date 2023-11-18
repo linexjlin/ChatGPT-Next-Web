@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSideConfig } from "../config/server";
+import { DEFAULT_MODELS, OPENAI_BASE_URL } from "../constant";
+import { collectModelTable } from "../utils/model";
+import { makeAzurePath } from "../azure";
 
 const CHAGLM_URL = process.env.CHAGLM_URL ?? "http://112.4.97.55:8001";
 
@@ -53,32 +57,39 @@ export async function requestOpenai(req: NextRequest) {
   let baseUrl = url;
 
   if (!baseUrl.startsWith("http")) {
-    baseUrl = `${PROTOCOL}://${baseUrl}`;
+    baseUrl = `https://${baseUrl}`;
   }
 
-  if (baseUrl.endsWith('/')) {
+  if (baseUrl.endsWith("/")) {
     baseUrl = baseUrl.slice(0, -1);
   }
 
-  console.log("[Proxy] ", openaiPath);
+  console.log("[Proxy] ", path);
   console.log("[Base Url]", baseUrl);
-
-  if (process.env.OPENAI_ORG_ID) {
-    console.log("[Org ID]", process.env.OPENAI_ORG_ID);
-  }
+  console.log("[Org ID]", serverConfig.openaiOrgId);
 
   const timeoutId = setTimeout(() => {
     controller.abort();
   }, 10 * 60 * 1000);
 
-  const fetchUrl = `${baseUrl}/${openaiPath}`;
+  if (serverConfig.isAzure) {
+    if (!serverConfig.azureApiVersion) {
+      return NextResponse.json({
+        error: true,
+        message: `missing AZURE_API_VERSION in server env vars`,
+      });
+    }
+    path = makeAzurePath(path, serverConfig.azureApiVersion);
+  }
+
+  const fetchUrl = `${baseUrl}/${path}`;
   const fetchOptions: RequestInit = {
     headers: {
       "Content-Type": "application/json",
       "Cache-Control": "no-store",
-      Authorization: authValue,
-      ...(process.env.OPENAI_ORG_ID && {
-        "OpenAI-Organization": process.env.OPENAI_ORG_ID,
+      [authHeaderName]: authValue,
+      ...(serverConfig.openaiOrgId && {
+        "OpenAI-Organization": serverConfig.openaiOrgId,
       }),
     },
     method: req.method,
@@ -91,18 +102,23 @@ export async function requestOpenai(req: NextRequest) {
   };
 
   // #1815 try to refuse gpt4 request
-  if (DISABLE_GPT4 && req.body) {
+  if (serverConfig.customModels && req.body) {
     try {
+      const modelTable = collectModelTable(
+        DEFAULT_MODELS,
+        serverConfig.customModels,
+      );
       const clonedBody = await req.text();
       fetchOptions.body = clonedBody;
 
-      const jsonBody = JSON.parse(clonedBody);
+      const jsonBody = JSON.parse(clonedBody) as { model?: string };
 
-      if ((jsonBody?.model ?? "").includes("gpt-4")) {
+      // not undefined and is false
+      if (modelTable[jsonBody?.model ?? ""].available === false) {
         return NextResponse.json(
           {
             error: true,
-            message: "you are not allowed to use gpt-4 model",
+            message: `you are not allowed to use ${jsonBody?.model} model`,
           },
           {
             status: 403,
